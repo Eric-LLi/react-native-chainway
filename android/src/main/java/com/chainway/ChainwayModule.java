@@ -7,13 +7,26 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Callback;
 
-public class ChainwayModule extends ReactContextBaseJavaModule {
+public class ChainwayModule extends ReactContextBaseJavaModule implements LifecycleEventListener {
 
     private final ReactApplicationContext reactContext;
 
     public ChainwayModule(ReactApplicationContext reactContext) {
         super(reactContext);
         this.reactContext = reactContext;
+        this.reactContext.addLifecycleEventListener(this);
+    }
+
+    private void sendEvent(String eventName, @Nullable WritableMap params) {
+        this.reactContext
+                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                .emit(eventName, params);
+    }
+
+    private void sendEvent(String eventName, String msg) {
+        this.reactContext
+                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                .emit(eventName, msg);
     }
 
     @Override
@@ -21,9 +34,18 @@ public class ChainwayModule extends ReactContextBaseJavaModule {
         return "Chainway";
     }
 
-    @ReactMethod
-    public void sampleMethod(String stringArgument, int numberArgument, Callback callback) {
-        // TODO: Implement some actually useful functionality
-        callback.invoke("Received numberArgument: " + numberArgument + " stringArgument: " + stringArgument);
+    @Override
+    public void onHostResume() {
+        //
+    }
+
+    @Override
+    public void onHostPause() {
+        //
+    }
+
+    @Override
+    public void onHostDestroy() {
+        //
     }
 }
