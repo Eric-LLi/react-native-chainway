@@ -2,11 +2,16 @@
 
 package com.chainway;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.util.Log;
 import android.view.KeyEvent;
 
 import androidx.annotation.Nullable;
 
+import com.barcode.BarcodeUtility;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.LifecycleEventListener;
 import com.facebook.react.bridge.Promise;
@@ -19,6 +24,7 @@ import com.rscja.deviceapi.RFIDWithUHFUART;
 import com.rscja.deviceapi.entity.UHFTAGInfo;
 import com.rscja.deviceapi.exception.ConfigurationException;
 import com.rscja.deviceapi.interfaces.IUHF;
+import com.zebra.adc.decoder.Barcode2DWithSoft;
 
 import java.util.ArrayList;
 
@@ -31,12 +37,15 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
     private final String TRIGGER_STATUS = "TRIGGER_STATUS";
     private final String WRITE_TAG_STATUS = "WRITE_TAG_STATUS";
     private final String TAG = "TAG";
+    private final String BARCODE = "BARCODE";
 
     private static RFIDWithUHFUART mReader = null;
     private static ArrayList<String> cacheTags = new ArrayList<>();
     private static boolean isSingleRead = false;
     private static ChainwayModule instance = null;
     private static boolean loopFlag = false;
+    private static BarcodeUtility barcodeUtility;
+    private static BarcodeDataReceiver barcodeDataReceiver = null;
 
     public ChainwayModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -226,11 +235,34 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
 
     private void doConnect() {
         try {
+            //RFID
             if (mReader == null) {
                 mReader = RFIDWithUHFUART.getInstance();
             }
-
             mReader.init();
+
+            //Barcode
+            if (barcodeUtility == null) {
+                barcodeUtility = BarcodeUtility.getInstance();
+            }
+
+            barcodeUtility.setOutputMode(this.reactContext, 2);// Broadcast receive data
+            barcodeUtility.setScanResultBroadcast(this.reactContext, "com.scanner.broadcast", "data"); //Set Broadcast
+            barcodeUtility.open(this.reactContext, BarcodeUtility.ModuleType.BARCODE_2D);
+            barcodeUtility.setReleaseScan(this.reactContext, false);
+            barcodeUtility.setScanFailureBroadcast(this.reactContext, true);
+            barcodeUtility.enableContinuousScan(this.reactContext, false);
+            barcodeUtility.enablePlayFailureSound(this.reactContext, true);
+            barcodeUtility.enablePlaySuccessSound(this.reactContext, true);
+            barcodeUtility.enableEnter(this.reactContext, false);
+            barcodeUtility.setBarcodeEncodingFormat(this.reactContext, 1);
+
+            if (barcodeDataReceiver == null) {
+                barcodeDataReceiver = new BarcodeDataReceiver();
+                IntentFilter intentFilter = new IntentFilter();
+                intentFilter.addAction("com.scanner.broadcast");
+                this.reactContext.registerReceiver(barcodeDataReceiver, intentFilter);
+            }
 
             WritableMap map = Arguments.createMap();
             map.putBoolean("status", true);
@@ -252,6 +284,15 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
 
         cacheTags = new ArrayList<>();
         mReader = null;
+
+        if (barcodeUtility != null) {
+            barcodeUtility.close(this.reactContext, BarcodeUtility.ModuleType.BARCODE_2D);
+        }
+
+        if (barcodeDataReceiver != null) {
+            this.reactContext.unregisterReceiver(barcodeDataReceiver);
+            barcodeDataReceiver = null;
+        }
 
         WritableMap map = Arguments.createMap();
         map.putBoolean("status", false);
@@ -310,6 +351,18 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
         }
     }
 
+    private void barcodeRead() {
+        if (barcodeUtility != null) {
+            barcodeUtility.startScan(this.reactContext, BarcodeUtility.ModuleType.BARCODE_2D);
+        }
+    }
+
+    private void barcodeCancel() {
+        if (barcodeUtility != null) {
+            barcodeUtility.stopScan(this.reactContext, BarcodeUtility.ModuleType.BARCODE_2D);
+        }
+    }
+
     private boolean addTagToList(String strEPC) {
         if (strEPC != null) {
             if (!cacheTags.contains(strEPC)) {
@@ -318,5 +371,19 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
             }
         }
         return false;
+    }
+
+    class BarcodeDataReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String barCode = intent.getStringExtra("data");
+            String status = intent.getStringExtra("SCAN_STATE");
+
+            if (status != null && (status.equals("cancel"))) {
+                return;
+            } else {
+                sendEvent(BARCODE, barCode);
+            }
+        }
     }
 }
