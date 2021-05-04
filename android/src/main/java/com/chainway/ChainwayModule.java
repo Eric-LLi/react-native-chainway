@@ -44,6 +44,7 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
     private static boolean isSingleRead = false;
     private static ChainwayModule instance = null;
     private static boolean loopFlag = false;
+    private static boolean isReadBarcode = false;
     private static BarcodeUtility barcodeUtility;
     private static BarcodeDataReceiver barcodeDataReceiver = null;
 
@@ -77,7 +78,11 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
                 map.putBoolean("status", true);
                 sendEvent(TRIGGER_STATUS, map);
 
-                read();
+                if (isReadBarcode) {
+                    barcodeRead();
+                } else {
+                    read();
+                }
             }
         }
     }
@@ -89,7 +94,11 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
                 map.putBoolean("status", false);
                 sendEvent(TRIGGER_STATUS, map);
 
-                cancel();
+                if (isReadBarcode) {
+                    barcodeCancel();
+                } else {
+                    cancel();
+                }
             }
         }
     }
@@ -171,7 +180,8 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
             WritableMap map = Arguments.createMap();
             map.putString("name", "ChainWay");
             map.putString("mac", "");
-            map.putString("antennaLevel", String.valueOf(antennaLevel));
+            map.putInt("antennaLevel", antennaLevel);
+            promise.resolve(map);
         } else {
             promise.reject(LOG, "Reader is not connected");
         }
@@ -226,8 +236,10 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
     public void setEnabled(boolean enable, Promise promise) {
         if (mReader != null) {
             if (enable) {
+                isReadBarcode = false;
                 mReader.init();
             } else {
+                isReadBarcode = true;
                 mReader.free();
             }
         }
@@ -303,10 +315,12 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
         if (mReader != null) {
             if (isSingleRead) {
                 UHFTAGInfo strUII = mReader.inventorySingleTag();
-                String strEPC = strUII.getEPC();
-                String rssi = strUII.getRssi();
+                if (strUII != null) {
+                    String strEPC = strUII.getEPC();
+                    String rssi = strUII.getRssi();
 
-                sendEvent(TAG, strEPC);
+                    sendEvent(TAG, strEPC);
+                }
             } else {
                 if (mReader.startInventoryTag()) {
                     loopFlag = true;
@@ -379,7 +393,7 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
             String barCode = intent.getStringExtra("data");
             String status = intent.getStringExtra("SCAN_STATE");
 
-            if (status != null && (status.equals("cancel"))) {
+            if (status != null && (status.equals("cancel") || status.equals("failuer"))) {
                 return;
             } else {
                 sendEvent(BARCODE, barCode);
