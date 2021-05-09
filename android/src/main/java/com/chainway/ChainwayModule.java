@@ -245,6 +245,17 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
         }
     }
 
+    @ReactMethod
+    public void softReadCancel(boolean enable, Promise promise) {
+        if(mReader != null){
+            if(enable){
+                read();
+            } else {
+                cancel();
+            }
+        }
+    }
+
     private void doConnect() {
         try {
             //RFID
