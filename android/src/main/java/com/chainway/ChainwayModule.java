@@ -247,8 +247,8 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
 
     @ReactMethod
     public void softReadCancel(boolean enable, Promise promise) {
-        if(mReader != null){
-            if(enable){
+        if (mReader != null) {
+            if (enable) {
                 read();
             } else {
                 cancel();
@@ -263,6 +263,7 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
                 mReader = RFIDWithUHFUART.getInstance();
             }
             mReader.init();
+            setGen2();
 
             //Barcode
             if (barcodeUtility == null) {
@@ -408,6 +409,66 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
                 return;
             } else {
                 sendEvent(BARCODE, barCode);
+            }
+        }
+    }
+
+    private void setGen2() {
+        if (mReader != null) {
+            char[] p = mReader.getGen2();
+            if (p != null && p.length >= 14) {
+                int target = p[0];
+                int action = p[1];
+                int t = p[2];
+                int q = p[3];
+                int startQ = p[4];
+                int minQ = p[5];
+                int maxQ = p[6];
+                int dr = p[7];
+                int coding = p[8];
+                int p1 = p[9];
+                int Sel = p[10];
+                int Session = p[11];
+                int g = p[12];
+                int linkFrequency = p[13];
+                StringBuilder sb = new StringBuilder();
+                sb.append("target=");
+                sb.append(target);
+                sb.append(" ,action=");
+                sb.append(action);
+                sb.append(" ,t=");
+                sb.append(t);
+                sb.append(" ,q=");
+                sb.append(q);
+                sb.append(" startQ=");
+                sb.append(startQ);
+                sb.append(" minQ=");
+                sb.append(minQ);
+                sb.append(" maxQ=");
+                sb.append(maxQ);
+                sb.append(" dr=");
+                sb.append(dr);
+                sb.append(" coding=");
+                sb.append(coding);
+                sb.append(" p=");
+                sb.append(p1);
+                sb.append(" Sel=");
+                sb.append(Sel);
+                sb.append(" Session=");
+                sb.append(Session);
+                sb.append(" g=");
+                sb.append(g);
+                sb.append(" linkFrequency=");
+                sb.append(linkFrequency);
+                sb.append("seesionid=");
+                sb.append(1);
+                sb.append(" inventoried=");
+                sb.append(0);
+                Log.i(TAG, sb.toString());
+
+                boolean result = mReader.setGen2(target, action, t, q, startQ, minQ, maxQ, dr, coding, p1, Sel, 0, 0, linkFrequency);
+
+                Log.d(LOG, "Set Gen2: " + result);
             }
         }
     }
