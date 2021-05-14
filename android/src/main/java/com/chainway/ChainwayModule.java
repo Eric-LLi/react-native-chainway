@@ -125,10 +125,14 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
 
     @ReactMethod
     public void isConnected(Promise promise) {
-        if (mReader != null) {
-            promise.resolve(mReader.getConnectStatus());
-        } else {
-            promise.resolve(false);
+        try {
+            if (mReader != null) {
+                promise.resolve(mReader.getConnectStatus());
+            } else {
+                promise.resolve(false);
+            }
+        } catch (Exception err) {
+            promise.reject(err);
         }
     }
 
