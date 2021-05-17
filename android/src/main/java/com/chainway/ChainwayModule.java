@@ -251,13 +251,22 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
 
     @ReactMethod
     public void softReadCancel(boolean enable, Promise promise) {
-        if (mReader != null) {
-            if (enable) {
-                read();
+        try {
+            if (mReader != null) {
+                if (enable) {
+                    read();
+                } else {
+                    cancel();
+                }
+
+                promise.resolve(true);
             } else {
-                cancel();
+                throw new Exception("Reader is not connected");
             }
+        } catch (Exception err) {
+            promise.reject(err);
         }
+
     }
 
     private void doConnect() {
