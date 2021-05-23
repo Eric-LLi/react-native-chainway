@@ -74,15 +74,15 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
     public void onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == 139 || keyCode == 280 || keyCode == 293) {
             if (event.getRepeatCount() == 0) {
-                WritableMap map = Arguments.createMap();
-                map.putBoolean("status", true);
-                sendEvent(TRIGGER_STATUS, map);
-
                 if (isReadBarcode) {
                     barcodeRead();
                 } else {
                     read();
                 }
+
+                WritableMap map = Arguments.createMap();
+                map.putBoolean("status", true);
+                sendEvent(TRIGGER_STATUS, map);
             }
         }
     }
@@ -90,15 +90,15 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
     public void onKeyUp(int keyCode, KeyEvent event) {
         if (keyCode == 139 || keyCode == 280 || keyCode == 293) {
             if (event.getRepeatCount() == 0) {
-                WritableMap map = Arguments.createMap();
-                map.putBoolean("status", false);
-                sendEvent(TRIGGER_STATUS, map);
-
                 if (isReadBarcode) {
                     barcodeCancel();
                 } else {
                     cancel();
                 }
+
+                WritableMap map = Arguments.createMap();
+                map.putBoolean("status", false);
+                sendEvent(TRIGGER_STATUS, map);
             }
         }
     }
