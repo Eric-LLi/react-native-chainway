@@ -23,6 +23,7 @@ import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.rscja.deviceapi.RFIDWithUHFUART;
 import com.rscja.deviceapi.entity.UHFTAGInfo;
 import com.rscja.deviceapi.exception.ConfigurationException;
+import com.rscja.deviceapi.interfaces.ConnectionStatus;
 import com.rscja.deviceapi.interfaces.IUHF;
 import com.zebra.adc.decoder.Barcode2DWithSoft;
 
@@ -127,7 +128,7 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
     public void isConnected(Promise promise) {
         try {
             if (mReader != null) {
-                promise.resolve(mReader.getConnectStatus());
+                promise.resolve(mReader.getConnectStatus() == ConnectionStatus.CONNECTED);
             } else {
                 promise.resolve(false);
             }
@@ -241,10 +242,10 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
         if (mReader != null) {
             if (enable) {
                 isReadBarcode = false;
-                mReader.init();
+//                mReader.init();
             } else {
                 isReadBarcode = true;
-                mReader.free();
+//                mReader.free();
             }
         }
     }
@@ -271,6 +272,10 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
 
     private void doConnect() {
         try {
+            if (mReader != null) {
+                doDisconnect();
+            }
+
             //RFID
             if (mReader == null) {
                 mReader = RFIDWithUHFUART.getInstance();
@@ -289,8 +294,8 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
             barcodeUtility.setReleaseScan(this.reactContext, false);
             barcodeUtility.setScanFailureBroadcast(this.reactContext, true);
             barcodeUtility.enableContinuousScan(this.reactContext, false);
-            barcodeUtility.enablePlayFailureSound(this.reactContext, true);
-            barcodeUtility.enablePlaySuccessSound(this.reactContext, true);
+            barcodeUtility.enablePlayFailureSound(this.reactContext, false);
+            barcodeUtility.enablePlaySuccessSound(this.reactContext, false);
             barcodeUtility.enableEnter(this.reactContext, false);
             barcodeUtility.setBarcodeEncodingFormat(this.reactContext, 1);
 
@@ -302,7 +307,7 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
             }
 
             WritableMap map = Arguments.createMap();
-            map.putBoolean("status", true);
+            map.putBoolean("status", mReader.getConnectStatus() == ConnectionStatus.CONNECTED);
             sendEvent(READER_STATUS, map);
         } catch (ConfigurationException e) {
             e.printStackTrace();
