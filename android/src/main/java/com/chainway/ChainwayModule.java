@@ -46,7 +46,7 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
     private static ChainwayModule instance = null;
     private static boolean loopFlag = false;
     private static boolean isReadBarcode = false;
-    private static BarcodeUtility barcodeUtility;
+    private static BarcodeUtility barcodeUtility = null;
     private static BarcodeDataReceiver barcodeDataReceiver = null;
 
     public ChainwayModule(ReactApplicationContext reactContext) {
@@ -267,7 +267,6 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
         } catch (Exception err) {
             promise.reject(err);
         }
-
     }
 
     private void doConnect() {
@@ -320,15 +319,16 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
     }
 
     private void doDisconnect() {
+        cacheTags = new ArrayList<>();
+
         if (mReader != null) {
             mReader.free();
+            mReader = null;
         }
-
-        cacheTags = new ArrayList<>();
-        mReader = null;
 
         if (barcodeUtility != null) {
             barcodeUtility.close(this.reactContext, BarcodeUtility.ModuleType.BARCODE_2D);
+            barcodeUtility = null;
         }
 
         if (barcodeDataReceiver != null) {
