@@ -338,6 +338,7 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
 
         WritableMap map = Arguments.createMap();
         map.putBoolean("status", false);
+        map.putString("error", null);
         sendEvent(READER_STATUS, map);
     }
 
