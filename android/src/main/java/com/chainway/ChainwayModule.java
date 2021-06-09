@@ -248,6 +248,8 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
 //                mReader.free();
             }
         }
+
+        promise.resolve(true);
     }
 
     @ReactMethod
@@ -355,7 +357,6 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
             } else {
                 if (mReader.startInventoryTag()) {
                     loopFlag = true;
-
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
@@ -387,7 +388,6 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
             }
         }
     }
-
 
     private void cancel() {
         if (mReader != null && !isSingleRead) {
