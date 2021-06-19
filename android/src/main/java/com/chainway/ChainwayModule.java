@@ -6,10 +6,14 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.KeyEvent;
 
 import androidx.annotation.Nullable;
+import androidx.loader.content.AsyncTaskLoader;
 
 import com.barcode.BarcodeUtility;
 import com.facebook.react.bridge.Arguments;
@@ -18,6 +22,7 @@ import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.rscja.deviceapi.RFIDWithUHFUART;
@@ -38,10 +43,11 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
     private final String TRIGGER_STATUS = "TRIGGER_STATUS";
     private final String WRITE_TAG_STATUS = "WRITE_TAG_STATUS";
     private final String TAG = "TAG";
+    private final String TAGS = "TAGS";
     private final String BARCODE = "BARCODE";
 
     private static RFIDWithUHFUART mReader = null;
-    private static ArrayList<String> cacheTags = new ArrayList<>();
+    private static final ArrayList<String> cacheTags = new ArrayList<>();
     private static boolean isSingleRead = false;
     private static ChainwayModule instance = null;
     private static boolean loopFlag = false;
@@ -70,6 +76,12 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
         this.reactContext
                 .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
                 .emit(eventName, msg);
+    }
+
+    private void sendEvent(String eventName, WritableArray array) {
+        this.reactContext
+                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                .emit(eventName, array);
     }
 
     public void onKeyDown(int keyCode, KeyEvent event) {
@@ -169,7 +181,7 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
 
     @ReactMethod
     public void clear() {
-        cacheTags = new ArrayList<>();
+        cacheTags.clear();
     }
 
     @ReactMethod
@@ -200,7 +212,7 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
             if (result) {
                 promise.resolve(true);
             } else {
-                promise.reject(LOG, "Set antenna level fail");
+                promise.reject(LOG, "Failed to change antenna power");
             }
         } else {
             promise.reject(LOG, "Reader is not connected");
@@ -321,8 +333,6 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
     }
 
     private void doDisconnect() {
-        cacheTags = new ArrayList<>();
-
         if (mReader != null) {
             mReader.free();
             mReader = null;
@@ -357,17 +367,23 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
             } else {
                 if (mReader.startInventoryTag()) {
                     loopFlag = true;
+
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            String strTid;
                             String strResult;
                             UHFTAGInfo res = null;
 
+                            ArrayList<String> temp_tags = new ArrayList<>();
+
                             while (loopFlag) {
                                 res = mReader.readTagFromBuffer();
+
                                 if (res != null) {
-                                    strTid = res.getTid();
+                                    String strTid = res.getTid();
+                                    String EPC = res.getEPC();
+                                    int rssi = Integer.parseInt(res.getRssi());
+
                                     if (strTid.length() != 0 && !strTid.equals("0000000" +
                                             "000000000") && !strTid.equals("000000000000000000000000")) {
                                         strResult = "TID:" + strTid + "\n";
@@ -377,9 +393,17 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
 
                                     Log.i("data", "EPC:" + res.getEPC() + "|" + strResult);
 
-                                    if (addTagToList(res.getEPC())) {
-                                        sendEvent(TAG, res.getEPC());
+                                    if (addTagToList(EPC)) {
+                                        temp_tags.add(EPC);
+//                                        sendEvent(TAG, res.getEPC());
                                     }
+                                } else {
+                                    if (temp_tags.size() > 0) {
+                                        sendEvent(TAGS, Arguments.fromList(temp_tags));
+
+                                        temp_tags.clear();
+                                    }
+
                                 }
                             }
                         }
@@ -485,7 +509,7 @@ public class ChainwayModule extends ReactContextBaseJavaModule implements Lifecy
                 sb.append(0);
                 Log.i(TAG, sb.toString());
 
-                boolean result = mReader.setGen2(target, action, t, q, startQ, minQ, maxQ, dr, coding, p1, Sel, 0, 0, linkFrequency);
+                boolean result = mReader.setGen2(target, action, t, q, startQ, minQ, maxQ, dr, coding, p1, Sel, 1, 0, linkFrequency);
 
                 Log.d(LOG, "Set Gen2: " + result);
             }
